@@ -1,0 +1,10 @@
+{
+    "subdocument": {
+        "string": "foo", 
+        "array_boolean": [true, false]
+    },
+    "array_document": [
+        {"string":"bar"}, 
+        {"string":"baz"}
+    ]
+}
