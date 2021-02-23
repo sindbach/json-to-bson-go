@@ -58,6 +58,7 @@ func convertMapToFields(input *orderedmap.OrderedMap) ([]Code, error) {
 			return nil, fmt.Errorf("value for key %q has unrecognized type %T", key, val)
 		}
 
+		elem.Tag(map[string]string{"bson": key})
 		fields = append(fields, elem)
 	}
 
