@@ -1,0 +1,17 @@
+{
+    "topLevel": 1,
+    "nested": {
+        "foo": "bar"
+    },
+    "superNested": {
+        "hello": "world",
+        "nestingFurther": {
+            "name": "Divjot",
+            "age": 23,
+            "randomArray": [1, "2"],
+            "lastLevel": {
+                "thing": true
+            }
+        }
+    }
+}

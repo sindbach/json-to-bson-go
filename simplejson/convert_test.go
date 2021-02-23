@@ -15,6 +15,7 @@ func TestConvert(t *testing.T) {
 	}{
 		{"scalar values", "simplejson_scalar", false},
 		{"arrays", "simplejson_array", false},
+		{"nested documents", "simplejson_nested", false},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -30,6 +31,7 @@ func TestConvert(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Convert error: %v", err)
 			}
+
 			expected := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../testdata/%s.generated", tc.filename))
 			if string(expected) != actual {
 				t.Fatalf("expected generated struct %s, got %s", string(expected), actual)
