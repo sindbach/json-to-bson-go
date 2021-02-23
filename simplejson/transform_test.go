@@ -1,4 +1,4 @@
-package jsonconvert
+package simplejson
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 func TestTransformJSON(t *testing.T) {
 	input := jsonutil.ReadFile("./examples/example_01.json")
 	output := jsonutil.ReadFileBytes("./examples/example_01.go")
-	result, err := TransformJSON(input)
+	result, err := Convert(input)
 	if err != nil {
 		t.Errorf("Failed to transform: %s", err)
 	}
