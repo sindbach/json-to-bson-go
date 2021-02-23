@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+
+	"github.com/iancoleman/orderedmap"
 )
 
 func ReadFileBytesOrPanic(filename string) []byte {
@@ -15,7 +17,7 @@ func ReadFileBytesOrPanic(filename string) []byte {
 	return raw
 }
 
-func ReadFileOrPanic(filename string) map[string]interface{} {
+func ReadFileOrPanic(filename string) *orderedmap.OrderedMap {
 	raw := ReadFileBytesOrPanic(filename)
 	converted, err := Unmarshal(raw)
 	if err != nil {
@@ -24,10 +26,10 @@ func ReadFileOrPanic(filename string) map[string]interface{} {
 	return converted
 }
 
-func Unmarshal(jsonStr []byte) (map[string]interface{}, error) {
-	var converted map[string]interface{}
+func Unmarshal(jsonStr []byte) (*orderedmap.OrderedMap, error) {
+	var converted orderedmap.OrderedMap
 	if err := json.Unmarshal(jsonStr, &converted); err != nil {
 		return nil, fmt.Errorf("invalid JSON input: %w", err)
 	}
-	return converted, nil
+	return &converted, nil
 }
