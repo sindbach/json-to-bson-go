@@ -17,7 +17,7 @@ func TestConvert(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			input := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../examples/%s.json", tc.filename))
+			input := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../testdata/%s.json", tc.filename))
 			actual, err := Convert(input)
 			if tc.expectErr {
 				if err == nil {
@@ -26,7 +26,7 @@ func TestConvert(t *testing.T) {
 				return
 			}
 
-			expected := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../examples/%s.go", tc.filename))
+			expected := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../testdata/%s.generated", tc.filename))
 			if string(expected) != actual {
 				t.Fatalf("expected generated struct %s, got %s", string(expected), actual)
 			}
