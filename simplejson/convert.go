@@ -29,6 +29,7 @@ func convertMapToFields(input *orderedmap.OrderedMap) ([]Code, error) {
 	var fields []Code
 	for _, key := range input.Keys() {
 		val, _ := input.Get(key)
+		structTags := []string{key}
 
 		elem := Id(strings.Title(key))
 		switch converted := val.(type) {
@@ -47,6 +48,7 @@ func convertMapToFields(input *orderedmap.OrderedMap) ([]Code, error) {
 			}
 		case []interface{}:
 			elem.Add(Index().Interface())
+			structTags = append(structTags, "omitempty")
 		case orderedmap.OrderedMap:
 			nestedFields, err := convertMapToFields(&converted)
 			if err != nil {
@@ -58,7 +60,8 @@ func convertMapToFields(input *orderedmap.OrderedMap) ([]Code, error) {
 			return nil, fmt.Errorf("value for key %q has unrecognized type %T", key, val)
 		}
 
-		elem.Tag(map[string]string{"bson": key})
+		tagsString := strings.Join(structTags, ",")
+		elem.Tag(map[string]string{"bson": tagsString})
 		fields = append(fields, elem)
 	}
 
