@@ -20,7 +20,7 @@ func TestConvert(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			input := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../testdata/%s.json", tc.filename))
-			actual, err := Convert(input)
+			actual, err := Convert(input, nil)
 			if tc.expectErr {
 				if err == nil {
 					t.Fatalf("expected error, got nil")

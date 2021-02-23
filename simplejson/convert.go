@@ -7,9 +7,12 @@ import (
 	. "github.com/dave/jennifer/jen"
 	"github.com/iancoleman/orderedmap"
 	"github.com/sindbach/json-to-bson-go/jsonutil"
+	"github.com/sindbach/json-to-bson-go/options"
 )
 
-func Convert(jsonStr []byte) (string, error) {
+// TODO: use the options passed to Convert
+
+func Convert(jsonStr []byte, opts *options.Options) (string, error) {
 	input, err := jsonutil.Unmarshal(jsonStr)
 	if err != nil {
 		return "", err
