@@ -33,6 +33,8 @@ func Convert(jsonStr []byte) (string, error) {
 			default:
 				elem.Add(Float64())
 			}
+		case []interface{}:
+			elem.Add(Index().Interface())
 		default:
 			return "", fmt.Errorf("value for key %q has unrecognized type %T", key, val)
 		}

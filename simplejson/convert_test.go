@@ -14,6 +14,7 @@ func TestConvert(t *testing.T) {
 		expectErr bool
 	}{
 		{"scalar values", "simplejson_scalar", false},
+		{"arrays", "simplejson_array", false},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,0 +1,5 @@
+{
+    "emptyArray": [],
+    "nonUniformArray": [1, 2, 3],
+    "uniformArray": [1, "foo"]
+}
