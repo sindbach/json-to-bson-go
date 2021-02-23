@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sindbach/json-to-bson-go/jsonutil"
 )
 
@@ -15,6 +16,7 @@ func TestConvert(t *testing.T) {
 		expectErr  bool
 	}{
 		{"scalar values", "extjson_scalar", "simplejson_scalar", false},
+		{"primitive values", "extjson_primitive", "primitive", false},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -28,8 +30,8 @@ func TestConvert(t *testing.T) {
 			}
 
 			expected := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../testdata/%s.generated", tc.outputfile))
-			if string(expected) != actual {
-				t.Fatalf("expected generated struct %s, got %s", string(expected), actual)
+			if diff := cmp.Diff(string(expected), actual); diff != "" {
+				t.Fatalf("Generated struct doesn't match expected, got difference %s", diff)
 			}
 		})
 	}

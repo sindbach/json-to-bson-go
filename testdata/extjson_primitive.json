@@ -1,0 +1,16 @@
+{
+    "oid": { "$oid": "57e193d7a9cc81b4027498b5"},
+    "Symbol": { "$symbol": "symbol"},
+    "Decimal": { "$numberDecimal": "1234" },
+    "Binary": { "$binary": { "base64": "o0w498Or7cijeBSpkquNtg==", "subType": "03" } },
+	"Code": { "$code": "function() {}" },
+	"CodeWithScope"	: { "$code": "function() {}", "$scope": { "x": 1 } },
+    "Timestamp": { "$timestamp": { "t": 42, "i": 1 } },
+    "RegularExpression"	: { "$regularExpression": { "pattern": "foo*", "options": "ix" } },
+    "Datetime": { "$date": { "$numberLong": "0" } },
+    "DBPointer": { "$dbPointer": { "$ref": "db.collection", "$id": { "$oid": "57e193d7a9cc81b4027498b1" } } },
+    "MinKey": { "$minKey": 1 },
+    "MaxKey": { "$maxKey": 1 },
+    "Null": null,
+	"Undefined": { "$undefined": true }
+}

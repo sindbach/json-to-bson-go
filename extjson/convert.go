@@ -29,6 +29,7 @@ func Convert(jsonStr []byte, canonical bool) (string, error) {
 	key, ejvr, err := docReader.ReadElement()
 	for err == nil {
 		elem := jen.Id(strings.Title(key))
+		structTags := []string{key}
 
 		switch ejvr.Type() {
 		case bsontype.Double:
@@ -42,38 +43,40 @@ func Convert(jsonStr []byte, canonical bool) (string, error) {
 		case bsontype.Int64:
 			elem.Add(jen.Int64())
 		case bsontype.Binary:
-			elem.Add(jen.Lit("primitive.Binary"))
+			elem.Add(jen.Qual("primitive", "Binary"))
 		case bsontype.Undefined:
-			elem.Add(jen.Lit("primitive.Undefined"))
+			elem.Add(jen.Qual("primitive", "Undefined"))
 		case bsontype.ObjectID:
-			elem.Add(jen.Lit("primitive.ObjectID"))
+			elem.Add(jen.Qual("primitive", "ObjectID"))
 		case bsontype.DateTime:
-			elem.Add(jen.Lit("primitive.DateTime"))
-		case bsontype.Null: // TODO: maybe should be interface {}
-			elem.Add(jen.Lit("primitive.Null"))
+			elem.Add(jen.Qual("primitive", "DateTime"))
+		case bsontype.Null: // TODO: maybe should be interface{}
+			elem.Add(jen.Qual("primitive", "Null"))
 		case bsontype.Regex:
-			elem.Add(jen.Lit("primitive.Regex"))
+			elem.Add(jen.Qual("primitive", "Regex"))
 		case bsontype.DBPointer:
-			elem.Add(jen.Lit("primitive.DBPointer"))
+			elem.Add(jen.Qual("primitive", "DBPointer"))
 		case bsontype.JavaScript:
-			elem.Add(jen.Lit("primitive.JavaScript"))
+			elem.Add(jen.Qual("primitive", "JavaScript"))
 		case bsontype.Symbol:
-			elem.Add(jen.Lit("primitive.Symbol"))
+			elem.Add(jen.Qual("primitive", "Symbol"))
 		case bsontype.CodeWithScope:
-			elem.Add(jen.Lit("primitive.CodeWithScope"))
+			elem.Add(jen.Qual("primitive", "CodeWithScope"))
 		case bsontype.Timestamp:
-			elem.Add(jen.Lit("primitive.Timestamp"))
+			elem.Add(jen.Qual("primitive", "Timestamp"))
 		case bsontype.Decimal128:
-			elem.Add(jen.Lit("primitive.Decimal128"))
+			elem.Add(jen.Qual("primitive", "Decimal128"))
 		case bsontype.MinKey:
-			elem.Add(jen.Lit("primitive.MinKey"))
+			elem.Add(jen.Qual("primitive", "MinKey"))
 		case bsontype.MaxKey:
-			elem.Add(jen.Lit("primitive.MaxKey"))
+			elem.Add(jen.Qual("primitive", "MaxKey"))
 		//TODO: embedded doc, Array
 		default:
 			return "", fmt.Errorf("Unknown type: %s", ejvr.Type())
 		}
 
+		tagsString := strings.Join(structTags, ",")
+		elem.Tag(map[string]string{"bson": tagsString})
 		fields = append(fields, elem)
 		err = ejvr.Skip()
 		if err != nil {
