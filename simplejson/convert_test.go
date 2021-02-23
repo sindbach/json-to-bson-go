@@ -26,6 +26,9 @@ func TestConvert(t *testing.T) {
 				return
 			}
 
+			if err != nil {
+				t.Fatalf("Convert error: %v", err)
+			}
 			expected := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../testdata/%s.generated", tc.filename))
 			if string(expected) != actual {
 				t.Fatalf("expected generated struct %s, got %s", string(expected), actual)
