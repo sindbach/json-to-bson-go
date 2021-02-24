@@ -1,0 +1,5 @@
+{
+    "emptyArray": [],
+    "nonUniformArray": [{"$numberInt": "1"}, {"$numberInt": "2"}, {"$numberInt": "3"}],
+    "uniformArray": [{"$numberInt": "1"}, "foo"]
+}
