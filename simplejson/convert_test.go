@@ -24,6 +24,8 @@ func TestConvert(t *testing.T) {
 		opts      *options.Options
 		expectErr bool
 	}{
+		// Success cases
+
 		{"scalar values", "simplejson_scalar", nil, false},
 		{"arrays", "simplejson_array", nil, false},
 		{"nested documents", "simplejson_nested", nil, false},
@@ -35,6 +37,10 @@ func TestConvert(t *testing.T) {
 		{"truncate ints true is a noop if minimize is false", "simplejson_minimize_false", truncateTrueMinFalseOpts, false},
 		{"truncate true", "simplejson_truncate_true", truncateTrueOpts, false},
 		{"truncate false", "simplejson_scalar", truncateFalseOpts, false},
+
+		// Error cases
+
+		{"invalid json", "simplejson_invalid", nil, true},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
