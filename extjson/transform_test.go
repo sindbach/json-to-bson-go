@@ -17,6 +17,8 @@ func TestConvert(t *testing.T) {
 	}{
 		{"scalar values", "extjson_scalar", "simplejson_scalar", false},
 		{"primitive values", "extjson_primitive", "primitive", false},
+		{"arrays", "extjson_array", "simplejson_array", false},
+		{"nested documents", "extjson_nested", "simplejson_nested", false},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
