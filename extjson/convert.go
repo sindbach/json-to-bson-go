@@ -11,12 +11,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 )
 
-func Convert(jsonStr []byte, canonical bool, opts *options.Options) (string, error) {
+func Convert(jsonStr []byte, opts *options.Options) (string, error) {
 	if opts == nil {
 		opts = options.NewOptions()
 	}
 
-	ejvr, err := bsonrw.NewExtJSONValueReader(bytes.NewReader(jsonStr), canonical)
+	// Set canonical to false, as the only difference for parsing is that canonical extJSON rejects
+	// more formats
+	ejvr, err := bsonrw.NewExtJSONValueReader(bytes.NewReader(jsonStr), false)
 	if err != nil {
 		return "", err
 	}
@@ -44,6 +46,9 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options) ([]jen.Code
 
 	var fields []jen.Code
 	key, ejvr, err := docReader.ReadElement()
+	if err != nil {
+		return nil, err
+	}
 	for err == nil {
 		elem := jen.Id(strings.Title(key))
 		structTags := []string{key}
@@ -128,6 +133,9 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options) ([]jen.Code
 			}
 		}
 		key, ejvr, err = docReader.ReadElement()
+	}
+	if err != nil && err != bsonrw.ErrEOD {
+		return nil, err
 	}
 
 	return fields, nil
