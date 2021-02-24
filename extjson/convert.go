@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	jen "github.com/dave/jennifer/jen"
+	"github.com/sindbach/json-to-bson-go/options"
 	"go.mongodb.org/mongo-driver/bson/bsonrw"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
-	"github.com/sindbach/json-to-bson-go/options"
 )
 
 func Convert(jsonStr []byte, canonical bool, opts *options.Options) (string, error) {
@@ -27,6 +27,7 @@ func Convert(jsonStr []byte, canonical bool, opts *options.Options) (string, err
 	}
 
 	output := jen.NewFile("main")
+	output.ImportName("go.mongodb.org/mongo-driver/bson/primitive", "primitive")
 	output.Type().Id(opts.StructName()).Struct(fields...)
 	return output.GoString(), nil
 }
@@ -74,34 +75,34 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options) ([]jen.Code
 				structTags = append(structTags, "truncate")
 			}
 		case bsontype.Binary:
-			elem.Add(jen.Qual("primitive", "Binary"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Binary"))
 		case bsontype.Undefined:
-			elem.Add(jen.Qual("primitive", "Undefined"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Undefined"))
 		case bsontype.ObjectID:
-			elem.Add(jen.Qual("primitive", "ObjectID"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "ObjectID"))
 		case bsontype.DateTime:
-			elem.Add(jen.Qual("primitive", "DateTime"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "DateTime"))
 		case bsontype.Null:
 			elem.Add(jen.Interface())
 			structTags = append(structTags, "omitempty")
 		case bsontype.Regex:
-			elem.Add(jen.Qual("primitive", "Regex"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Regex"))
 		case bsontype.DBPointer:
-			elem.Add(jen.Qual("primitive", "DBPointer"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "DBPointer"))
 		case bsontype.JavaScript:
-			elem.Add(jen.Qual("primitive", "JavaScript"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "JavaScript"))
 		case bsontype.Symbol:
-			elem.Add(jen.Qual("primitive", "Symbol"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Symbol"))
 		case bsontype.CodeWithScope:
-			elem.Add(jen.Qual("primitive", "CodeWithScope"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "CodeWithScope"))
 		case bsontype.Timestamp:
-			elem.Add(jen.Qual("primitive", "Timestamp"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Timestamp"))
 		case bsontype.Decimal128:
-			elem.Add(jen.Qual("primitive", "Decimal128"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Decimal128"))
 		case bsontype.MinKey:
-			elem.Add(jen.Qual("primitive", "MinKey"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "MinKey"))
 		case bsontype.MaxKey:
-			elem.Add(jen.Qual("primitive", "MaxKey"))
+			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "MaxKey"))
 		case bsontype.Array:
 			elem.Add(jen.Index().Interface())
 			structTags = append(structTags, "omitempty")
