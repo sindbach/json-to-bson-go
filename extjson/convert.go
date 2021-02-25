@@ -23,18 +23,31 @@ func Convert(jsonStr []byte, opts *options.Options) (string, error) {
 		return "", err
 	}
 
-	fields, err := getStructFields(ejvr, opts)
+	fields, err := getStructFields(ejvr, opts, opts.StructName())
 	if err != nil {
 		return "", err
 	}
 
 	output := jen.NewFile("main")
 	output.ImportName("go.mongodb.org/mongo-driver/bson/primitive", "primitive")
-	output.Type().Id(opts.StructName()).Struct(fields...)
+	for idx, gs := range fields {
+		if idx != 0 {
+			output.Line()
+		}
+		output.Type().Id(gs.name).Struct(gs.fields...)
+	}
 	return output.GoString(), nil
 }
 
-func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options) ([]jen.Code, error) {
+type generatedStruct struct {
+	name   string
+	fields []jen.Code
+}
+
+func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName string) ([]generatedStruct, error) {
+	var allStructs []generatedStruct
+	var topLevelFields []jen.Code
+
 	if ejvr.Type() != bsontype.EmbeddedDocument {
 		return nil, fmt.Errorf("expected document type, got %s", ejvr.Type())
 	}
@@ -43,14 +56,13 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options) ([]jen.Code
 	if err != nil {
 		return nil, err
 	}
-
-	var fields []jen.Code
 	key, ejvr, err := docReader.ReadElement()
 	if err != nil {
 		return nil, err
 	}
 	for err == nil {
-		elem := jen.Id(strings.Title(key))
+		elemKey := strings.Title(key)
+		elem := jen.Id(elemKey)
 		structTags := []string{key}
 		var nestedDoc bool
 
@@ -112,12 +124,13 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options) ([]jen.Code
 			elem.Add(jen.Index().Interface())
 			structTags = append(structTags, "omitempty")
 		case bsontype.EmbeddedDocument:
-			nestedFields, err := getStructFields(ejvr, opts)
+
+			nestedFields, err := getStructFields(ejvr, opts, elemKey)
 			if err != nil {
 				return nil, fmt.Errorf("error processing nested document for key %q: %w", key, err)
 			}
-
-			elem.Add(jen.Struct(nestedFields...))
+			allStructs = append(allStructs, nestedFields...)
+			elem.Add(jen.Id(elemKey))
 			nestedDoc = true
 		default:
 			return nil, fmt.Errorf("Unknown type: %s", ejvr.Type())
@@ -125,7 +138,8 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options) ([]jen.Code
 
 		tagsString := strings.Join(structTags, ",")
 		elem.Tag(map[string]string{"bson": tagsString})
-		fields = append(fields, elem)
+
+		topLevelFields = append(topLevelFields, elem)
 		if !nestedDoc {
 			err = ejvr.Skip()
 			if err != nil {
@@ -138,5 +152,10 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options) ([]jen.Code
 		return nil, err
 	}
 
-	return fields, nil
+	topLevelStruct := generatedStruct{
+		name:   structName,
+		fields: topLevelFields,
+	}
+	allStructs = append([]generatedStruct{topLevelStruct}, allStructs...)
+	return allStructs, nil
 }

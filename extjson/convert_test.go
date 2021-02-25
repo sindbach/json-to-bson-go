@@ -53,7 +53,6 @@ func TestConvert(t *testing.T) {
 				}
 				return
 			}
-
 			expected := jsonutil.ReadFileBytesOrPanic(fmt.Sprintf("../testdata/%s.generated", tc.outputfile))
 			if diff := cmp.Diff(string(expected), actual); diff != "" {
 				t.Fatalf("Generated struct doesn't match expected, got difference %s", diff)
