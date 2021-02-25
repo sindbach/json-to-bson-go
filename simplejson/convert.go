@@ -51,33 +51,18 @@ func convertMapToStructs(input *orderedmap.OrderedMap, opts *options.Options, st
 		elemKey := strings.Title(key)
 		elem := Id(elemKey)
 		switch converted := val.(type) {
-		case string:
-			elem.Add(String())
-		case bool:
-			elem.Add(Bool())
-		case float64:
-			if !opts.MinimizeIntegerSize() {
-				elem.Add(Float64())
-				break
-			}
-
-			canTruncate := true
-			switch {
-			case float64(int32(converted)) == converted:
-				elem.Add(Int32())
-			case float64(int64(converted)) == converted:
-				elem.Add(Int64())
-			default:
-				canTruncate = false
-				elem.Add(Float64())
-			}
-
-			if canTruncate && opts.TruncateIntegers() {
-				structTags = append(structTags, "truncate")
-			}
 		case []interface{}:
-			elem.Add(Index().Interface())
+			nestedField, err := getArrayStatement(converted, opts, elemKey)
+			if err != nil {
+				return nil, fmt.Errorf("error processing array for key %q: %w", key, err)
+			}
 			structTags = append(structTags, "omitempty")
+
+			if nestedField != nil {
+				elem.Add(Index().Add(nestedField))
+			} else {
+				elem.Add(Index().Interface())
+			}
 		case orderedmap.OrderedMap:
 			// The name of the nested struct type will always be the field name, so we can pass elemKey as the struct
 			// name. For example, a JSON input of {a: {b: 1}} will become
@@ -98,7 +83,13 @@ func convertMapToStructs(input *orderedmap.OrderedMap, opts *options.Options, st
 			// struct is the same as the field name, so we can add elemKey to the line.
 			elem.Add(Id(elemKey))
 		default:
-			return nil, fmt.Errorf("value for key %q has unrecognized type %T", key, val)
+			fieldType, addTags, err := getFieldStatement(val, opts)
+			if err != nil {
+				return nil, err
+			}
+
+			elem.Add(fieldType)
+			structTags = append(structTags, addTags...)
 		}
 
 		tagsString := strings.Join(structTags, ",")
@@ -112,4 +103,73 @@ func convertMapToStructs(input *orderedmap.OrderedMap, opts *options.Options, st
 	}
 	allStructs = append([]generatedStruct{topLevelStruct}, allStructs...)
 	return allStructs, nil
+}
+
+func getFieldStatement(val interface{}, opts *options.Options) (*Statement, []string, error) {
+	var structTags []string
+	var statement *Statement
+
+	switch converted := val.(type) {
+	case string:
+		statement = String()
+	case bool:
+		statement = Bool()
+	case float64:
+		if !opts.MinimizeIntegerSize() {
+			statement = Float64()
+			break
+		}
+
+		canTruncate := true
+		switch {
+		case float64(int32(converted)) == converted:
+			statement = Int32()
+		case float64(int64(converted)) == converted:
+			statement = Int64()
+		default:
+			canTruncate = false
+			statement = Float64()
+		}
+
+		if canTruncate && opts.TruncateIntegers() {
+			structTags = append(structTags, "truncate")
+		}
+	case []interface{}, *orderedmap.OrderedMap:
+		statement = Interface()
+		if _, ok := val.([]interface{}); ok {
+			structTags = append(structTags, "omitempty")
+		}
+	default:
+		return nil, nil, fmt.Errorf("value has unrecognized type %T", val)
+	}
+
+	return statement, structTags, nil
+}
+
+func getArrayStatement(arr []interface{}, opts *options.Options, name string) (*Statement, error) {
+	var retVal *Statement
+	stillChecking := true
+
+	for _, val := range arr {
+		switch val.(type) {
+		case []interface{}, *orderedmap.OrderedMap:
+			stillChecking = false
+			retVal = nil
+		default:
+			if stillChecking {
+				fieldType, _, err := getFieldStatement(val, opts)
+				if err != nil {
+					return nil, err
+				}
+				if retVal == nil {
+					retVal = fieldType
+				} else if retVal.GoString() != fieldType.GoString() {
+					stillChecking = false
+					retVal = nil
+				}
+			}
+		}
+	}
+
+	return retVal, nil
 }
