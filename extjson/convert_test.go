@@ -27,10 +27,13 @@ func TestConvert(t *testing.T) {
 		expectErr  bool
 	}{
 		//relaxed cases
-		{"scalar values", "simplejson_scalar", "simplejson_scalar", nil, false},
+		{"scalar values/simple", "simplejson_scalar", "simplejson_scalar", nil, false},
+		{"scalar values/ext", "extjson_scalar", "simplejson_scalar", nil, false},
 		{"primitive values", "extjson_primitive", "primitive", nil, false},
-		{"arrays", "simplejson_array", "simplejson_array", nil, false},
-		{"nested documents", "simplejson_nested", "simplejson_nested", nil, false},
+		{"arrays/simple", "simplejson_array", "simplejson_array", nil, false},
+		{"arrays/ext", "extjson_array", "simplejson_array", nil, false},
+		{"nested documents/simple", "simplejson_nested", "simplejson_nested", nil, false},
+		{"nested documents/ext", "extjson_nested", "simplejson_nested", nil, false},
 		{"custom struct name", "simplejson_custom_name", "simplejson_custom_name", customNameOpts, false},
 		// The scalar values file contains examples of numeric values being represented as types other than float64.
 		// The MinimizeIntegerSize option is true by default, so that test passes without any options as well.
@@ -50,6 +53,11 @@ func TestConvert(t *testing.T) {
 			if tc.expectErr {
 				if err == nil {
 					t.Fatalf("expected error, got nil")
+				}
+				return
+			} else {
+				if err != nil {
+					t.Fatalf("expected nil, got error %v", err)
 				}
 				return
 			}
