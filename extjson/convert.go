@@ -64,65 +64,20 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 		elemKey := strings.Title(key)
 		elem := jen.Id(elemKey)
 		structTags := []string{key}
-		var nestedDoc bool
 
 		switch ejvr.Type() {
-		case bsontype.Double:
-			elem.Add(jen.Float64())
-		case bsontype.String:
-			elem.Add(jen.String())
-		case bsontype.Boolean:
-			elem.Add(jen.Bool())
-		case bsontype.Int32:
-			if !opts.MinimizeIntegerSize() {
-				elem.Add(jen.Float64())
-				break
-			}
-			elem.Add(jen.Int32())
-			if opts.TruncateIntegers() {
-				structTags = append(structTags, "truncate")
-			}
-		case bsontype.Int64:
-			if !opts.MinimizeIntegerSize() {
-				elem.Add(jen.Float64())
-				break
-			}
-			elem.Add(jen.Int64())
-			if opts.TruncateIntegers() {
-				structTags = append(structTags, "truncate")
-			}
-		case bsontype.Binary:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Binary"))
-		case bsontype.Undefined:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Undefined"))
-		case bsontype.ObjectID:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "ObjectID"))
-		case bsontype.DateTime:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "DateTime"))
-		case bsontype.Null:
-			elem.Add(jen.Interface())
-			structTags = append(structTags, "omitempty")
-		case bsontype.Regex:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Regex"))
-		case bsontype.DBPointer:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "DBPointer"))
-		case bsontype.JavaScript:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "JavaScript"))
-		case bsontype.Symbol:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Symbol"))
-		case bsontype.CodeWithScope:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "CodeWithScope"))
-		case bsontype.Timestamp:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Timestamp"))
-		case bsontype.Decimal128:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Decimal128"))
-		case bsontype.MinKey:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "MinKey"))
-		case bsontype.MaxKey:
-			elem.Add(jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "MaxKey"))
 		case bsontype.Array:
-			elem.Add(jen.Index().Interface())
+			nestedField, err := getArrayStruct(ejvr, opts, elemKey)
+			if err != nil {
+				return nil, fmt.Errorf("error processing array for key %q: %w", key, err)
+			}
 			structTags = append(structTags, "omitempty")
+
+			if nestedField != nil {
+				elem.Add(jen.Index().Add(nestedField))
+			} else {
+				elem.Add(jen.Index().Interface())
+			}
 		case bsontype.EmbeddedDocument:
 
 			nestedFields, err := getStructFields(ejvr, opts, elemKey)
@@ -131,21 +86,23 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 			}
 			allStructs = append(allStructs, nestedFields...)
 			elem.Add(jen.Id(elemKey))
-			nestedDoc = true
 		default:
-			return nil, fmt.Errorf("Unknown type: %s", ejvr.Type())
+			fieldType, addTags, err := getField(ejvr, opts)
+			if err != nil {
+				return nil, err
+			}
+			elem.Add(fieldType)
+			structTags = append(structTags, addTags...)
+			err = ejvr.Skip()
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		tagsString := strings.Join(structTags, ",")
 		elem.Tag(map[string]string{"bson": tagsString})
 
 		topLevelFields = append(topLevelFields, elem)
-		if !nestedDoc {
-			err = ejvr.Skip()
-			if err != nil {
-				return nil, err
-			}
-		}
 		key, ejvr, err = docReader.ReadElement()
 	}
 	if err != nil && err != bsonrw.ErrEOD {
@@ -158,4 +115,121 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 	}
 	allStructs = append([]generatedStruct{topLevelStruct}, allStructs...)
 	return allStructs, nil
+}
+
+func getField(ejvr bsonrw.ValueReader, opts *options.Options) (*jen.Statement, []string, error) {
+	structTags := []string{}
+
+	var retVal *jen.Statement
+	switch ejvr.Type() {
+	case bsontype.Double:
+		retVal = jen.Float64()
+	case bsontype.String:
+		retVal = jen.String()
+	case bsontype.Boolean:
+		retVal = jen.Bool()
+	case bsontype.Int32:
+		if !opts.MinimizeIntegerSize() {
+			retVal = jen.Float64()
+			break
+		}
+		retVal = jen.Int32()
+		if opts.TruncateIntegers() {
+			structTags = append(structTags, "truncate")
+		}
+	case bsontype.Int64:
+		if !opts.MinimizeIntegerSize() {
+			retVal = jen.Float64()
+			break
+		}
+		retVal = jen.Int64()
+		if opts.TruncateIntegers() {
+			structTags = append(structTags, "truncate")
+		}
+	case bsontype.Binary:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Binary")
+	case bsontype.Undefined:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Undefined")
+	case bsontype.ObjectID:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "ObjectID")
+	case bsontype.DateTime:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "DateTime")
+	case bsontype.Null:
+		retVal = jen.Interface()
+		structTags = append(structTags, "omitempty")
+	case bsontype.Regex:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Regex")
+	case bsontype.DBPointer:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "DBPointer")
+	case bsontype.JavaScript:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "JavaScript")
+	case bsontype.Symbol:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Symbol")
+	case bsontype.CodeWithScope:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "CodeWithScope")
+	case bsontype.Timestamp:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Timestamp")
+	case bsontype.Decimal128:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Decimal128")
+	case bsontype.MinKey:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "MinKey")
+	case bsontype.MaxKey:
+		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "MaxKey")
+	// if we got here, we got here from getArrayStruct and i don't care yet
+	case bsontype.EmbeddedDocument, bsontype.Array:
+		retVal = jen.Interface()
+		structTags = append(structTags, "omitempty")
+	default:
+		return nil, structTags, fmt.Errorf("Unknown type: %s", ejvr.Type())
+	}
+
+	return retVal, structTags, nil
+}
+
+func getArrayStruct(ejvr bsonrw.ValueReader, opts *options.Options, name string) (*jen.Statement, error) {
+	if ejvr.Type() != bsontype.Array {
+		return nil, fmt.Errorf("expected document type, got %s", ejvr.Type())
+	}
+
+	arrayReader, err := ejvr.ReadArray()
+	if err != nil {
+		return nil, err
+	}
+
+	var retVal *jen.Statement
+	stillChecking := true
+
+	for {
+		ejvr, err = arrayReader.ReadValue()
+		if err != nil {
+			break
+		}
+		switch ejvr.Type() {
+		case bsontype.Array, bsontype.EmbeddedDocument:
+			stillChecking = false
+			retVal = nil
+		default:
+			if stillChecking {
+				fieldType, _, err := getField(ejvr, opts)
+				if err != nil {
+					return nil, err
+				}
+				if retVal == nil {
+					retVal = fieldType
+				} else if retVal.GoString() != fieldType.GoString() {
+					stillChecking = false
+					retVal = nil
+				}
+			}
+		}
+		err = ejvr.Skip()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err != nil && err != bsonrw.ErrEOA {
+		return nil, err
+	}
+
+	return retVal, nil
 }

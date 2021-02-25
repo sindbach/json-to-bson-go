@@ -13,5 +13,6 @@
     "MinKey": { "$minKey": 1 },
     "MaxKey": { "$maxKey": 1 },
     "Null": null,
-	"Undefined": { "$undefined": true }
+	"Undefined": { "$undefined": true },
+    "Array": [{ "$numberDecimal": "1234" }]
 }
