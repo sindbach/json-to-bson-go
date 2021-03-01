@@ -11,6 +11,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 )
 
+// ImportPrimitive is a constant for bson.primitive module
+const ImportPrimitive string = "go.mongodb.org/mongo-driver/bson/primitive"
+
 type generatedStruct struct {
 	name   string
 	fields []jen.Code
@@ -35,7 +38,7 @@ func Convert(jsonStr []byte, opts *options.Options) (string, error) {
 	}
 
 	output := jen.NewFile("main")
-	output.ImportName("go.mongodb.org/mongo-driver/bson/primitive", "primitive")
+	output.ImportName(ImportPrimitive, "primitive")
 	for idx, gs := range fields {
 		if idx != 0 {
 			output.Line()
@@ -80,7 +83,6 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 				elem.Add(jen.Index().Interface())
 			}
 		case bsontype.EmbeddedDocument:
-
 			nestedFields, err := getStructFields(ejvr, opts, elemKey)
 			if err != nil {
 				return nil, fmt.Errorf("error processing nested document for key %q: %w", key, err)
@@ -148,34 +150,34 @@ func getField(ejvr bsonrw.ValueReader, opts *options.Options) (*jen.Statement, [
 			structTags = append(structTags, "truncate")
 		}
 	case bsontype.Binary:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Binary")
+		retVal = jen.Qual(ImportPrimitive, "Binary")
 	case bsontype.Undefined:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Undefined")
+		retVal = jen.Qual(ImportPrimitive, "Undefined")
 	case bsontype.ObjectID:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "ObjectID")
+		retVal = jen.Qual(ImportPrimitive, "ObjectID")
 	case bsontype.DateTime:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "DateTime")
+		retVal = jen.Qual(ImportPrimitive, "DateTime")
 	case bsontype.Null:
 		retVal = jen.Interface()
 		structTags = append(structTags, "omitempty")
 	case bsontype.Regex:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Regex")
+		retVal = jen.Qual(ImportPrimitive, "Regex")
 	case bsontype.DBPointer:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "DBPointer")
+		retVal = jen.Qual(ImportPrimitive, "DBPointer")
 	case bsontype.JavaScript:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "JavaScript")
+		retVal = jen.Qual(ImportPrimitive, "JavaScript")
 	case bsontype.Symbol:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Symbol")
+		retVal = jen.Qual(ImportPrimitive, "Symbol")
 	case bsontype.CodeWithScope:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "CodeWithScope")
+		retVal = jen.Qual(ImportPrimitive, "CodeWithScope")
 	case bsontype.Timestamp:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Timestamp")
+		retVal = jen.Qual(ImportPrimitive, "Timestamp")
 	case bsontype.Decimal128:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "Decimal128")
+		retVal = jen.Qual(ImportPrimitive, "Decimal128")
 	case bsontype.MinKey:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "MinKey")
+		retVal = jen.Qual(ImportPrimitive, "MinKey")
 	case bsontype.MaxKey:
-		retVal = jen.Qual("go.mongodb.org/mongo-driver/bson/primitive", "MaxKey")
+		retVal = jen.Qual(ImportPrimitive, "MaxKey")
 	// if we got here, we got here from getArrayStruct and i don't care yet
 	case bsontype.EmbeddedDocument, bsontype.Array:
 		retVal = jen.Interface()
@@ -206,9 +208,25 @@ func getArrayStruct(ejvr bsonrw.ValueReader, opts *options.Options, name string)
 			break
 		}
 		switch ejvr.Type() {
-		case bsontype.Array, bsontype.EmbeddedDocument:
+
+		// Array of array
+		case bsontype.Array:
 			stillChecking = false
 			retVal = nil
+		// Array of documents
+		case bsontype.EmbeddedDocument:
+			if stillChecking {
+				fieldType, _, err := getField(ejvr, opts)
+				if err != nil {
+					return nil, err
+				}
+				if retVal == nil {
+					retVal = fieldType
+				} else if retVal.GoString() != fieldType.GoString() {
+					stillChecking = false
+					retVal = nil
+				}
+			}
 		default:
 			if stillChecking {
 				fieldType, _, err := getField(ejvr, opts)
