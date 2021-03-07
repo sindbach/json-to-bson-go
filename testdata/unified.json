@@ -1,0 +1,7 @@
+{
+    "foo": 1,
+    "bar": "test",
+    "baz": {"abc": 1, "def": {"sigh":1} },
+    "normalArray": ["a", "b"], 
+    "interfaceArray":["a", 1]
+}
