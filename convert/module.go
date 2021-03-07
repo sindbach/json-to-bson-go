@@ -14,7 +14,7 @@ import (
 // ImportPrimitive is a constant for bson.primitive module
 const ImportPrimitive string = "go.mongodb.org/mongo-driver/bson/primitive"
 
-type generatedStruct struct {
+type snippet struct {
 	name   string
 	fields []jen.Code
 }
@@ -32,30 +32,29 @@ func Convert(jsonStr []byte, opts *options.Options) (string, error) {
 		return "", err
 	}
 
-	fields, err := getStructFields(ejvr, opts, opts.StructName())
+	snippets, err := processDocument(ejvr, opts, opts.StructName())
 	if err != nil {
 		return "", err
 	}
 
 	output := jen.NewFile("main")
 	output.ImportName(ImportPrimitive, "primitive")
-	for idx, gs := range fields {
+	for idx, structSnippet := range snippets {
 		if idx != 0 {
 			output.Line()
 		}
-		output.Type().Id(gs.name).Struct(gs.fields...)
+		output.Type().Id(structSnippet.name).Struct(structSnippet.fields...)
 	}
 	return output.GoString(), nil
 }
 
-func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName string) ([]generatedStruct, error) {
-	var allStructs []generatedStruct
+func processDocument(ejvr bsonrw.ValueReader, opts *options.Options, structName string) ([]snippet, error){
+	var result []snippet 
 	var topLevelFields []jen.Code
 
 	if ejvr.Type() != bsontype.EmbeddedDocument {
-		return nil, fmt.Errorf("expected document type, got %s", ejvr.Type())
+		return nil, fmt.Errorf("Expecting a document type, received %s", ejvr.Type())
 	}
-
 	docReader, err := ejvr.ReadDocument()
 	if err != nil {
 		return nil, err
@@ -64,6 +63,7 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 	if err != nil {
 		return nil, err
 	}
+	// loop through the document
 	for err == nil {
 		elemKey := strings.Title(key)
 		elem := jen.Id(elemKey)
@@ -71,26 +71,21 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 
 		switch ejvr.Type() {
 		case bsontype.Array:
-			nestedField, err := getArrayStruct(ejvr, opts, elemKey)
+			arrayField, err := processArray(ejvr, opts, elemKey)
 			if err != nil {
 				return nil, fmt.Errorf("error processing array for key %q: %w", key, err)
-			}
-			structTags = append(structTags, "omitempty")
-
-			if nestedField != nil {
-				elem.Add(jen.Index().Add(nestedField))
-			} else {
-				elem.Add(jen.Index().Interface())
-			}
+            }
+            structTags = append(structTags, "omitempty")
+			elem.Add(arrayField)
 		case bsontype.EmbeddedDocument:
-			nestedFields, err := getStructFields(ejvr, opts, elemKey)
+			nestedFields, err := processDocument(ejvr, opts, elemKey)
 			if err != nil {
 				return nil, fmt.Errorf("error processing nested document for key %q: %w", key, err)
 			}
-			allStructs = append(allStructs, nestedFields...)
+			result = append(result, nestedFields...)
 			elem.Add(jen.Id(elemKey))
 		default:
-			fieldType, addTags, err := getField(ejvr, opts)
+			fieldType, addTags, err := processField(ejvr, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +96,6 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 				return nil, err
 			}
 		}
-
 		tagsString := strings.Join(structTags, ",")
 		elem.Tag(map[string]string{"bson": tagsString})
 
@@ -111,16 +105,15 @@ func getStructFields(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 	if err != nil && err != bsonrw.ErrEOD {
 		return nil, err
 	}
-
-	topLevelStruct := generatedStruct{
+	topLevelStruct := snippet{
 		name:   structName,
 		fields: topLevelFields,
 	}
-	allStructs = append([]generatedStruct{topLevelStruct}, allStructs...)
-	return allStructs, nil
+	result = append([]snippet{topLevelStruct}, result...)
+	return result, nil 
 }
 
-func getField(ejvr bsonrw.ValueReader, opts *options.Options) (*jen.Statement, []string, error) {
+func processField(ejvr bsonrw.ValueReader, opts *options.Options) (*jen.Statement, []string, error) {
 	structTags := []string{}
 
 	var retVal *jen.Statement
@@ -189,14 +182,28 @@ func getField(ejvr bsonrw.ValueReader, opts *options.Options) (*jen.Statement, [
 	return retVal, structTags, nil
 }
 
-func getArrayStruct(ejvr bsonrw.ValueReader, opts *options.Options, name string) (*jen.Statement, error) {
-	if ejvr.Type() != bsontype.Array {
-		return nil, fmt.Errorf("expected document type, got %s", ejvr.Type())
-	}
 
+func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (*jen.Statement, error) {
+	
+	/*
+	 handles: 
+	 	a :[1, 2] => int32
+		a :[1, "a"] => interface
+
+		a :[{b:1}, {b:2}] =>  []A
+		a :[{b:1}, {b:"a"}] => []interface
+		a :[{b:[1,2], {b:[1,2]}}] => []A where b is []interface
+		a :[{b:{c:1}}, {b:{c:2}}] => []A where b is []interface
+	*/
+
+	// Default return value is interface. 
+	result := jen.Index().Interface() 
+	if ejvr.Type() != bsontype.Array {
+		return result, fmt.Errorf("Expecting an array type, received %s", ejvr.Type())
+	}
 	arrayReader, err := ejvr.ReadArray()
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
 	var retVal *jen.Statement
@@ -211,27 +218,35 @@ func getArrayStruct(ejvr bsonrw.ValueReader, opts *options.Options, name string)
 
 		// Array of array
 		case bsontype.Array:
+			// TODO
 			stillChecking = false
 			retVal = nil
 		// Array of documents
 		case bsontype.EmbeddedDocument:
-			if stillChecking {
-				fieldType, _, err := getField(ejvr, opts)
-				if err != nil {
-					return nil, err
-				}
-				if retVal == nil {
-					retVal = fieldType
-				} else if retVal.GoString() != fieldType.GoString() {
-					stillChecking = false
-					retVal = nil
-				}
+			fieldType, _, err := processField(ejvr, opts)
+			if err != nil {
+				return result, err
 			}
+			if retVal == nil {
+				retVal = fieldType
+			} else if retVal.GoString() != fieldType.GoString() {
+				stillChecking = false
+				retVal = nil
+			}
+			// Pick only the first document
+			stillChecking = false 
+			nestedFields, err := processDocument(ejvr, opts, elemKey)
+			if err != nil {
+				return nil, fmt.Errorf("error processing nested document for key %q: %w", key, err)
+			}
+			retVal = nestedFields[0]
+
+
 		default:
 			if stillChecking {
-				fieldType, _, err := getField(ejvr, opts)
+				fieldType, _, err := processField(ejvr, opts)
 				if err != nil {
-					return nil, err
+					return result, err
 				}
 				if retVal == nil {
 					retVal = fieldType
@@ -243,12 +258,15 @@ func getArrayStruct(ejvr bsonrw.ValueReader, opts *options.Options, name string)
 		}
 		err = ejvr.Skip()
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 	}
 	if err != nil && err != bsonrw.ErrEOA {
-		return nil, err
+		return result, err
 	}
 
-	return retVal, nil
+	if retVal != nil {
+		result = jen.Index().Add(retVal)
+	}
+	return result, nil
 }
