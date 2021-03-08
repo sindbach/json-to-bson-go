@@ -3,5 +3,6 @@
     "bar": "test",
     "baz": {"abc": 1, "def": {"sigh":1} },
     "normalArray": ["a", "b"], 
-    "interfaceArray":["a", 1]
+    "interfaceArray":["a", 1], 
+    "subdocArray": [{"a":1}]
 }
