@@ -41,7 +41,7 @@ func TestConvert(t *testing.T) {
 		{"truncate ints true is a noop if minimize is false", "simplejson_minimize_false", "simplejson_minimize_false", truncateTrueMinFalseOpts, false},
 		{"truncate true", "simplejson_minimize_false", "simplejson_truncate_true", truncateTrueOpts, false},
 		{"truncate false", "simplejson_scalar", "simplejson_scalar", truncateFalseOpts, false},
-		{"unified", "unified", "unified", nil, false},
+		{"nested array", "mixed_nested_array", "mixed_nested_array", nil, false},
 
 		// Error cases
 		{"invalid json", "simplejson_invalid", "", nil, true},
