@@ -71,11 +71,15 @@ func processDocument(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 
 		switch ejvr.Type() {
 		case bsontype.Array:
-			arrayField, err := processArray(ejvr, opts, elemKey)
+			arrayField, snippetResult, err := processArray(ejvr, opts, elemKey)
 			if err != nil {
 				return nil, fmt.Errorf("error processing array for key %q: %w", key, err)
 			}
 			structTags = append(structTags, "omitempty")
+			fmt.Printf("processArray returns snippet: %s \n", snippetResult)
+			if snippetResult.name != "" {
+				result = append(result, snippetResult)
+			}
 			elem.Add(arrayField)
 		case bsontype.EmbeddedDocument:
 			nestedFields, err := processDocument(ejvr, opts, elemKey)
@@ -182,7 +186,7 @@ func processField(ejvr bsonrw.ValueReader, opts *options.Options) (*jen.Statemen
 	return retVal, structTags, nil
 }
 
-func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (*jen.Statement, error) {
+func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (*jen.Statement, snippet, error) {
 
 	/*
 		 handles:
@@ -197,22 +201,21 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (
 		// Always pick the first document/array in array
 
 	*/
-
+	snippetResult := snippet{}
 	// Default return value is interface.
 	result := jen.Index().Interface()
 	if ejvr.Type() != bsontype.Array {
-		return result, fmt.Errorf("Expecting an array type, received %s", ejvr.Type())
+		return result, snippetResult, fmt.Errorf("Expecting an array type, received %s", ejvr.Type())
 	}
 	arrayReader, err := ejvr.ReadArray()
 	if err != nil {
-		return result, err
+		return result, snippetResult, err
 	}
 
 	var retVal *jen.Statement
 	stillChecking := true
 	nested := false
 	for {
-		fmt.Println("...")
 		ejvr, err = arrayReader.ReadValue()
 		if err != nil {
 			fmt.Println(err)
@@ -222,8 +225,6 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (
 
 		// Array of array
 		case bsontype.Array:
-			// TODO
-			fmt.Println("Got here")
 			stillChecking = false
 			retVal = nil
 		// Array of documents
@@ -236,20 +237,18 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (
 			nestedFields, err := processDocument(ejvr, opts, elemKey)
 			if err != nil {
 				fmt.Println(err)
-				return nil, fmt.Errorf("error processing nested document for key %q: %w", elemKey, err)
+				return nil, snippetResult, fmt.Errorf("error processing nested document for key %q: %w", elemKey, err)
 			}
 			fmt.Printf("value of nestedFields %s\n", nestedFields)
 			retVal = jen.Id(elemKey)
-			//for _, gs := range nestedFields {
-			//	retVal.Struct(gs.fields...)
-			//}
-			retVal.Tag(map[string]string{"bson": "testx"})
+			snippetResult = nestedFields[len(nestedFields)-1]
+			fmt.Printf("Value of snippetResult is %s\n", snippetResult)
 			fmt.Printf("Value of retval in nested %s\n", retVal)
 		default:
 			if stillChecking {
 				fieldType, _, err := processField(ejvr, opts)
 				if err != nil {
-					return result, err
+					return result, snippetResult, err
 				}
 				if retVal == nil {
 					retVal = fieldType
@@ -262,19 +261,16 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (
 		if nested != true {
 			err = ejvr.Skip()
 			if err != nil {
-				return result, err
+				return result, snippetResult, err
 			}
 		}
 	}
 	if err != nil && err != bsonrw.ErrEOA {
-		return result, err
+		return result, snippetResult, err
 	}
 
-	fmt.Printf("Value of retval %s\n", retVal)
 	if retVal != nil {
-		fmt.Printf("Result shouldn't be interface for %s\n", name)
 		result = jen.Index().Add(retVal)
 	}
-	fmt.Printf("Value of result is %s \n", result)
-	return result, nil
+	return result, snippetResult, nil
 }
