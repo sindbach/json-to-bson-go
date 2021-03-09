@@ -1,8 +1,18 @@
 {
     "foo": 1,
     "bar": "test",
-    "baz": {"abc": 1, "def": {"sigh":1} },
+    "baz": {"abc": 1, "def": {"sigh":{"enough": true}} },
+    "zoo": {"abc": 1, "def": [1, 2] },
+    "zing": {"abc": 1, "def": [{"a":1}, {"a":2}] },
     "normalArray": ["a", "b"], 
+    "normalArray2": [2],
     "interfaceArray":["a", 1], 
-    "subdocArray": [{"a":1}]
+    "subdocArray": [{"a":1, "b":"test"}],
+    "subdocArray2": [{"a":1}, {"b":"test"}],
+    "subdocArray3": [{"a":[1,"b"]}],
+    "subdocArray4": [{"a":[{"b":1}]}],
+    "subdocArray5": [{"a":[1, 2]}, {"a":[3, 5]}],
+    "nestedArray": [[1, 2]],
+    "nestedArray2": [[1, 2], [2, 3]],
+    "nestedArray3": [[1, 2], ["a"]]
 }

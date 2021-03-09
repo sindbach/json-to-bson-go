@@ -3,6 +3,7 @@ package convert
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 
 	jen "github.com/dave/jennifer/jen"
@@ -13,6 +14,9 @@ import (
 
 // ImportPrimitive is a constant for bson.primitive module
 const ImportPrimitive string = "go.mongodb.org/mongo-driver/bson/primitive"
+
+// ArrayRecursiveDepthLimit is the depth limit of nested level
+const ArrayRecursiveDepthLimit int = 1
 
 type snippet struct {
 	name   string
@@ -32,7 +36,7 @@ func Convert(jsonStr []byte, opts *options.Options) (string, error) {
 		return "", err
 	}
 
-	snippets, err := processDocument(ejvr, opts, opts.StructName())
+	snippets, err := processDocument(ejvr, opts, opts.StructName(), 0)
 	if err != nil {
 		return "", err
 	}
@@ -48,7 +52,7 @@ func Convert(jsonStr []byte, opts *options.Options) (string, error) {
 	return output.GoString(), nil
 }
 
-func processDocument(ejvr bsonrw.ValueReader, opts *options.Options, structName string) ([]snippet, error) {
+func processDocument(ejvr bsonrw.ValueReader, opts *options.Options, structName string, depth int) ([]snippet, error) {
 	var result []snippet
 	var topLevelFields []jen.Code
 
@@ -71,18 +75,17 @@ func processDocument(ejvr bsonrw.ValueReader, opts *options.Options, structName 
 
 		switch ejvr.Type() {
 		case bsontype.Array:
-			arrayField, snippetResult, err := processArray(ejvr, opts, elemKey)
+			arrayField, snippetResult, err := processArray(ejvr, opts, elemKey, (depth + 1))
 			if err != nil {
 				return nil, fmt.Errorf("error processing array for key %q: %w", key, err)
 			}
 			structTags = append(structTags, "omitempty")
-			fmt.Printf("processArray returns snippet: %s \n", snippetResult)
 			if snippetResult.name != "" {
 				result = append(result, snippetResult)
 			}
 			elem.Add(arrayField)
 		case bsontype.EmbeddedDocument:
-			nestedFields, err := processDocument(ejvr, opts, elemKey)
+			nestedFields, err := processDocument(ejvr, opts, elemKey, (depth + 1))
 			if err != nil {
 				return nil, fmt.Errorf("error processing nested document for key %q: %w", key, err)
 			}
@@ -186,21 +189,7 @@ func processField(ejvr bsonrw.ValueReader, opts *options.Options) (*jen.Statemen
 	return retVal, structTags, nil
 }
 
-func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (*jen.Statement, snippet, error) {
-
-	/*
-		 handles:
-		 	a :[1, 2] => int32
-			a :[1, "a"] => interface
-
-			a :[{b:1}, {b:2}] =>  []A
-			a :[{b:1}, {b:"a"}] => []interface
-			a :[{b:[1,2], {b:[1,2]}}] => []A where b is []interface
-			a :[{b:{c:1}}, {b:{c:2}}] => []A where b is []interface
-
-		// Always pick the first document/array in array
-
-	*/
+func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, depth int) (*jen.Statement, snippet, error) {
 	snippetResult := snippet{}
 	// Default return value is interface.
 	result := jen.Index().Interface()
@@ -215,35 +204,63 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string) (
 	var retVal *jen.Statement
 	stillChecking := true
 	nested := false
+	var snippetRecords []snippet
+	elemKey := strings.Title(name)
+
 	for {
 		ejvr, err = arrayReader.ReadValue()
 		if err != nil {
-			fmt.Println(err)
 			break
 		}
 		switch ejvr.Type() {
 
 		// Array of array
 		case bsontype.Array:
-			stillChecking = false
-			retVal = nil
+			if depth > ArrayRecursiveDepthLimit {
+				stillChecking = false
+			}
+			if stillChecking {
+				arrayField, _, err := processArray(ejvr, opts, elemKey, (depth + 1))
+				if err != nil {
+					return nil, snippetResult, fmt.Errorf("error processing array for key %q: %w", elemKey, err)
+				}
+				if retVal == nil {
+					retVal = arrayField
+				} else if !reflect.DeepEqual(retVal, arrayField) {
+					stillChecking = false
+					retVal = nil
+				}
+				nested = true
+			} else {
+				nested = false
+			}
 		// Array of documents
 		case bsontype.EmbeddedDocument:
-			// Pick only the first document
-			stillChecking = false
-			nested = true
-			elemKey := strings.Title(name)
-			fmt.Printf("Analysing document %s\n", elemKey)
-			nestedFields, err := processDocument(ejvr, opts, elemKey)
-			if err != nil {
-				fmt.Println(err)
-				return nil, snippetResult, fmt.Errorf("error processing nested document for key %q: %w", elemKey, err)
+			if depth > ArrayRecursiveDepthLimit {
+				stillChecking = false
 			}
-			fmt.Printf("value of nestedFields %s\n", nestedFields)
-			retVal = jen.Id(elemKey)
-			snippetResult = nestedFields[len(nestedFields)-1]
-			fmt.Printf("Value of snippetResult is %s\n", snippetResult)
-			fmt.Printf("Value of retval in nested %s\n", retVal)
+			if stillChecking {
+				nestedFields, err := processDocument(ejvr, opts, elemKey, (depth + 1))
+				if err != nil {
+					return nil, snippetResult, fmt.Errorf("error processing nested document for key %q: %w", elemKey, err)
+				}
+				retVal = jen.Id(elemKey)
+				snippetResult = nestedFields[0]
+				snippetRecords = append(snippetRecords, snippetResult)
+				for idx, snp := range snippetRecords {
+					if idx == 0 {
+						continue
+					}
+					if !reflect.DeepEqual(snp, snippetRecords[idx-1]) {
+						retVal = nil
+						snippetResult = snippet{}
+						stillChecking = false
+					}
+				}
+				nested = true
+			} else {
+				nested = false
+			}
 		default:
 			if stillChecking {
 				fieldType, _, err := processField(ejvr, opts)
