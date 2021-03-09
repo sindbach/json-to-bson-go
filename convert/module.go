@@ -16,7 +16,7 @@ import (
 const ImportPrimitive string = "go.mongodb.org/mongo-driver/bson/primitive"
 
 // ArrayRecursiveDepthLimit is the depth limit of nested level
-const ArrayRecursiveDepthLimit int = 1
+const ArrayRecursiveDepthLimit int = 2
 
 type snippet struct {
 	name   string
@@ -202,20 +202,37 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, d
 	}
 
 	var retVal *jen.Statement
+	var snippetRecords []snippet
+	previousType := ""
+	elemKey := strings.Title(name)
 	stillChecking := true
 	nested := false
-	var snippetRecords []snippet
-	elemKey := strings.Title(name)
-
+	
 	for {
 		ejvr, err = arrayReader.ReadValue()
 		if err != nil {
 			break
 		}
+
+		// If the array contains different types, i.e. subdoc and string, then 
+		// stop checking, and set result to interface{}
+		if previousType == "" && 
+			(ejvr.Type()==bsontype.Array || 
+			ejvr.Type()==bsontype.EmbeddedDocument)  {
+			previousType = ejvr.Type().String()
+		} else if previousType != "" {
+			if previousType != ejvr.Type().String() {
+				retVal = nil
+				stillChecking = false
+				nested = false
+			}
+		}
 		switch ejvr.Type() {
 
 		// Array of array
 		case bsontype.Array:
+			// Limit the recursive depth, because we can't bubble up the 
+			// returned snippet{} yet. 
 			if depth > ArrayRecursiveDepthLimit {
 				stillChecking = false
 			}
@@ -224,6 +241,8 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, d
 				if err != nil {
 					return nil, snippetResult, fmt.Errorf("error processing array for key %q: %w", elemKey, err)
 				}
+				// if the previous array contains different content, then
+				// stop checking and set result to interface{}
 				if retVal == nil {
 					retVal = arrayField
 				} else if !reflect.DeepEqual(retVal, arrayField) {
@@ -236,9 +255,12 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, d
 			}
 		// Array of documents
 		case bsontype.EmbeddedDocument:
+			// Limit the recursive depth, because we can't bubble up the 
+			// returned snippet{} yet. 
 			if depth > ArrayRecursiveDepthLimit {
 				stillChecking = false
 			}
+
 			if stillChecking {
 				nestedFields, err := processDocument(ejvr, opts, elemKey, (depth + 1))
 				if err != nil {
@@ -247,6 +269,8 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, d
 				retVal = jen.Id(elemKey)
 				snippetResult = nestedFields[0]
 				snippetRecords = append(snippetRecords, snippetResult)
+				// if the previous subdoc contains different content then
+				// stop checking and set result to interface{}
 				for idx, snp := range snippetRecords {
 					if idx == 0 {
 						continue
@@ -275,6 +299,7 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, d
 				}
 			}
 		}
+
 		if nested != true {
 			err = ejvr.Skip()
 			if err != nil {
