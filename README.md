@@ -5,7 +5,7 @@
 
 A module to aid developers to generate Go BSON class maps. The auto-generated code output utilises [go.mongodb.org/mongo-driver/bson](https://pkg.go.dev/go.mongodb.org/mongo-driver/bson), and is ideal to be used to read/write into [MongoDB](https://www.mongodb.com/).
 
-This module is able to process two formats: 
+This module is able to process both formats: 
 
 * [Standard JSON](https://www.json.org/json-en.html)
 * [MongoDB Extended JSON v2](https://docs.mongodb.com/manual/reference/mongodb-extended-json/)
@@ -23,14 +23,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/sindbach/json-to-bson-go/extjson"
+	"github.com/sindbach/json-to-bson-go/convert"
 	"github.com/sindbach/json-to-bson-go/options"
 )
 
 func main() {
 	doc := `{"foo": "buildfest", "bar": {"$numberDecimal":"2021"} }`
 	opt := options.NewOptions()
-	result, _ := extjson.Convert([]byte(doc), opt)
+	result, _ := convert.Convert([]byte(doc), opt)
     fmt.Println(result)
 }
 ```

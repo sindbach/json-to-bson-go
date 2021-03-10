@@ -1,0 +1,37 @@
+{
+    "fieldA": {
+        "subfield1": 1, 
+        "subfield2": [
+            {"subfield3": 1}, 
+            {"subfield3": 2}
+        ]
+    },
+    "fieldB": {
+        "subfield2": [
+            {"subfield3": {"$numberInt": "1"}}, 
+            {"subfield4": {"$numberInt": "2"}}
+        ]
+    },
+    "fieldC": [
+        {"subfield1": 1, "subfield2": "Wan"}
+    ],
+    "fieldD": [
+        {"subfield1": 1}, 
+        {"subfield2": "World"}
+    ],
+    "fieldE": [
+        {"subfield1": [ 1, "Hello" ]}
+    ],
+    "fieldF": [
+        {"subfield1":[
+            {"subfield2": 1}
+        ]}
+    ],
+    "fieldG": [
+        {"subfield1":[ 1, 2 ]}, 
+        {"subfield1":[ 3, 5 ]}
+    ],
+    "fieldH": [ [ 1, 2 ], [3, 5] ],
+    "fieldI": [ [ 1, 2 ], "New Zealand"],
+    "fieldJ": [ [ 1, 2 ], ["MongoDB"] ]
+}
