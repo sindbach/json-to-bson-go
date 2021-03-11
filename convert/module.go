@@ -207,18 +207,18 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, d
 	elemKey := strings.Title(name)
 	stillChecking := true
 	nested := false
-	
+
 	for {
 		ejvr, err = arrayReader.ReadValue()
 		if err != nil {
 			break
 		}
 
-		// If the array contains different types, i.e. subdoc and string, then 
+		// If the array contains different types, i.e. subdoc and string, then
 		// stop checking, and set result to interface{}
-		if previousType == "" && 
-			(ejvr.Type()==bsontype.Array || 
-			ejvr.Type()==bsontype.EmbeddedDocument)  {
+		if previousType == "" &&
+			(ejvr.Type() == bsontype.Array ||
+				ejvr.Type() == bsontype.EmbeddedDocument) {
 			previousType = ejvr.Type().String()
 		} else if previousType != "" {
 			if previousType != ejvr.Type().String() {
@@ -231,9 +231,9 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, d
 
 		// Array of array
 		case bsontype.Array:
-			// Limit the recursive depth, because we can't bubble up the 
-			// returned snippet{} yet. 
-			if depth > ArrayRecursiveDepthLimit {
+			// Limit the recursive depth, because we can't bubble up the
+			// returned snippet{} yet.
+			if depth > (ArrayRecursiveDepthLimit - 1) {
 				stillChecking = false
 			}
 			if stillChecking {
@@ -255,8 +255,8 @@ func processArray(ejvr bsonrw.ValueReader, opts *options.Options, name string, d
 			}
 		// Array of documents
 		case bsontype.EmbeddedDocument:
-			// Limit the recursive depth, because we can't bubble up the 
-			// returned snippet{} yet. 
+			// Limit the recursive depth, because we can't bubble up the
+			// returned snippet{} yet.
 			if depth > ArrayRecursiveDepthLimit {
 				stillChecking = false
 			}

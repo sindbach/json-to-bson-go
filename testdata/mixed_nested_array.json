@@ -33,5 +33,6 @@
     ],
     "fieldH": [ [ 1, 2 ], [3, 5] ],
     "fieldI": [ [ 1, 2 ], "New Zealand"],
-    "fieldJ": [ [ 1, 2 ], ["MongoDB"] ]
+    "fieldJ": [ [ 1, 2 ], ["MongoDB"] ],
+    "fieldK": [ [ [1, 2] ] ]
 }
