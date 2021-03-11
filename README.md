@@ -48,6 +48,18 @@ type Example struct {
 }
 ```
 
+## Behaviour and Limitations
+
+As of current latest version, these are the limitations: 
+
+
+| Case           | Ex. input        | Ex. output        | Description        
+|----------------|------------------|-------------------| ---------------|
+| Array of array consistent| `[[1, 2], [3, 4]]` | `[][]int32`
+| Array of array inconsistent | `[[1, 2], "foo"]` | `[]interface{}`
+| Array of array nest level | `[[[1, 2]]]`      | `[][]interface{}`   | 
+| Array of document | `[{"a": 1}]` | `[]A{}`
+
 ## Options 
 
 Available options
