@@ -22,15 +22,15 @@ go get -u github.com/sindbach/json-to-bson-go
 package main
 
 import (
-	"fmt"
-	"github.com/sindbach/json-to-bson-go/convert"
-	"github.com/sindbach/json-to-bson-go/options"
+    "fmt"
+    "github.com/sindbach/json-to-bson-go/convert"
+    "github.com/sindbach/json-to-bson-go/options"
 )
 
 func main() {
-	doc := `{"foo": "buildfest", "bar": {"$numberDecimal":"2021"} }`
-	opt := options.NewOptions()
-	result, _ := convert.Convert([]byte(doc), opt)
+    doc := `{"foo": "buildfest", "bar": {"$numberDecimal":"2021"} }`
+    opt := options.NewOptions()
+    result, _ := convert.Convert([]byte(doc), opt)
     fmt.Println(result)
 }
 ```
@@ -43,8 +43,8 @@ package main
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Example struct {
-        Foo string               `bson:"foo"`
-        Bar primitive.Decimal128 `bson:"bar"`
+    Foo string               `bson:"foo"`
+    Bar primitive.Decimal128 `bson:"bar"`
 }
 ```
 
