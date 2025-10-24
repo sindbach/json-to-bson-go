@@ -10,6 +10,8 @@ This module is able to process both formats:
 * [Standard JSON](https://www.json.org/json-en.html)
 * [MongoDB Extended JSON v2](https://docs.mongodb.com/manual/reference/mongodb-extended-json/)
 
+You can see the module in action on https://json-to-bson-map.netlify.app/ 
+
 ## Install 
 
 ```
